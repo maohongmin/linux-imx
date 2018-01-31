@@ -72,6 +72,7 @@ static u8 clrkey[] = {
 
 static void key_display(struct device *dev, u8 *label, u16 size, u8 *key)
 {
+	return;
 	unsigned i;
 
 	dev_info(dev, label);
