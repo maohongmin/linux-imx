@@ -513,11 +513,20 @@ static void option_instat_callback(struct urb *urb);
 #define VIATELECOM_VENDOR_ID			0x15eb
 #define VIATELECOM_PRODUCT_CDS7			0x0001
 
+/* SIMCOM */
+#define SIMCOM_SIM7600_VID 0x1E0E
+#define SIMCOM_SIM7600_PID 0x9001
+
 struct option_blacklist_info {
 	/* bitmask of interface numbers blacklisted for send_setup */
 	const unsigned long sendsetup;
 	/* bitmask of interface numbers that are reserved */
 	const unsigned long reserved;
+};
+
+/* for SIM7600 modem for NDIS */
+static const struct option_blacklist_info simcom_sim7600_blacklist = {
+	.reserved = BIT(5),
 };
 
 static const struct option_blacklist_info four_g_w14_blacklist = {
@@ -624,6 +633,9 @@ static const struct option_blacklist_info sierra_mc73xx_blacklist = {
 };
 
 static const struct usb_device_id option_ids[] = {
+	/* for SIM7600 modem for NDIS */
+	{ USB_DEVICE(SIMCOM_SIM7600_VID, SIMCOM_SIM7600_PID),
+		.driver_info = (kernel_ulong_t) &simcom_sim7600_blacklist },
 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_COLT) },
 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_RICOLA) },
 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_RICOLA_LIGHT) },
