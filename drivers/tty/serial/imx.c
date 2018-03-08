@@ -1910,6 +1910,32 @@ static int serial_imx_resume(struct platform_device *dev)
 }
 
 #ifdef CONFIG_OF
+static int serial_imx_probe_rs485_dt(struct imx_port *sport,
+	struct device_node *np)
+{
+	struct serial_rs485 *rs485conf = &sport->port.rs485;
+	u32 rs485_delay[2];
+
+	rs485conf->flags = 0;
+
+	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time"))
+		rs485conf->flags |= SER_RS485_ENABLED;
+
+	if (of_property_read_bool(np, "rs485-rx-during-tx"))
+		rs485conf->flags |= SER_RS485_RX_DURING_TX;
+
+	if (of_property_read_u32_array(np, "rs485-rts-delay",
+				    rs485_delay, 2) == 0) {
+		rs485conf->delay_rts_before_send = rs485_delay[0];
+		rs485conf->delay_rts_after_send = rs485_delay[1];
+	}
+
+	if (of_property_read_bool(np, "rs485-rts-active-high"))
+		rs485conf->flags |= SER_RS485_RTS_ON_SEND;
+	else
+		rs485conf->flags |= SER_RS485_RTS_AFTER_SEND;
+	return 0;
+}
 /*
  * This function returns 1 iff pdev isn't a device instatiated by dt, 0 iff it
  * could successfully get all information from dt or a negative errno.
@@ -1938,6 +1964,8 @@ static int serial_imx_probe_dt(struct imx_port *sport,
 
 	if (of_get_property(np, "fsl,dte-mode", NULL))
 		sport->dte_mode = 1;
+
+	serial_imx_probe_rs485_dt(sport, np);
 
 	sport->devdata = of_id->data;
 
@@ -2002,8 +2030,6 @@ static int serial_imx_probe(struct platform_device *pdev)
 	sport->port.fifosize = 32;
 	sport->port.ops = &imx_pops;
 	sport->port.rs485_config = imx_rs485_config;
-	sport->port.rs485.flags =
-		SER_RS485_RTS_ON_SEND | SER_RS485_RX_DURING_TX;
 	sport->port.flags = UPF_BOOT_AUTOCONF;
 	init_timer(&sport->timer);
 	sport->timer.function = imx_timeout;
