@@ -395,6 +395,8 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
 	imx6ul-14x14-lpddr2-arm2.dtb \
 	imx6ul-agv.dtb \
 	imx6ul-charger.dtb \
+	imx6ul-charger-v2.dtb \
+	imx6ul-fl.dtb \
 	imx6ul-9x9-evk.dtb \
 	imx6ul-9x9-evk-btwifi.dtb \
 	imx6ul-9x9-evk-csi.dtb \
