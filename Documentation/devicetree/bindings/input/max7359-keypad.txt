@@ -1,0 +1,33 @@
+* MAX7359 keypda device tree bindings
+
+Required Properties:
+- compatible:		Should be "maxim,max7359"
+- linux,keymap:		The definition can be found at
+			bindings/input/matrix-keymap.txt
+
+Optional Properties:
+- maxim,debounce_reg: u8, in short allow control debounce,
+see max7359 datasheet for details
+- maxim,ports_reg: u8, in short allow control what pin used,
+and what pins should be configured as GPIO
+
+Example:
+	max7359_keypad@38 {
+		compatible = "maxim,max7359";
+		reg = <0x38>;
+		interrupts = <28 IRQ_TYPE_LEVEL_LOW>;/*gpio_156*/
+		interrupt-parent = <&gpio5>;
+		maxim,debounce_reg = /bits/ 8 <0x5F>;
+		maxim,ports_reg = /bits/ 8 <0xFF>;
+		linux,keymap = <
+		MATRIX_KEY(0, 0, KEY_RESERVED) /*row 0 not used*/
+		MATRIX_KEY(0, 1, KEY_RESERVED)
+		MATRIX_KEY(0, 2, KEY_RESERVED)
+		MATRIX_KEY(0, 3, KEY_RESERVED)
+		MATRIX_KEY(0, 4, KEY_RESERVED)
+		MATRIX_KEY(0, 5, KEY_RESERVED)
+		MATRIX_KEY(0, 6, KEY_RESERVED)
+		MATRIX_KEY(0, 7, KEY_RESERVED)
+		...
+		>;
+	};

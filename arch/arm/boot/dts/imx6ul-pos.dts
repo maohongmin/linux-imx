@@ -12,7 +12,7 @@
 #include "imx6ul.dtsi"
 
 / {
-	model = "i.MX6 UltraLite Charger V2 Board";
+	model = "i.MX6 UltraLite POS L Board";
 	compatible = "fsl,imx6ul-14x14-evk", "fsl,imx6ul";
 
 	chosen {
@@ -64,43 +64,6 @@
 			gpios = <&gpio5 3 GPIO_ACTIVE_HIGH>;
 			states = <1300000 0x1 1400000 0x0>;
 		};
-	};
-
-	sound {
-		compatible = "fsl,imx6ul-evk-wm8960",
-			   "fsl,imx-audio-wm8960";
-		model = "wm8960-audio";
-		cpu-dai = <&sai2>;
-		audio-codec = <&codec>;
-		asrc-controller = <&asrc>;
-		codec-master;
-		gpr = <&gpr 4 0x100000 0x100000>;
-		/*
-                 * hp-det = <hp-det-pin hp-det-polarity>;
-		 * hp-det-pin: JD1 JD2  or JD3
-		 * hp-det-polarity = 0: hp detect high for headphone
-		 * hp-det-polarity = 1: hp detect high for speaker
-		 */
-		hp-det = <3 0>;
-		/* hp-det-gpios = <&gpio5 4 0>; */
-		mic-det-gpios = <&gpio5 4 0>;
-		audio-routing =
-			"Headphone Jack", "HP_L",
-			"Headphone Jack", "HP_R",
-			"Ext Spk", "SPK_LP",
-			"Ext Spk", "SPK_LN",
-			"Ext Spk", "SPK_RP",
-			"Ext Spk", "SPK_RN",
-			"LINPUT2", "Mic Jack",
-			"LINPUT3", "Mic Jack",
-			"RINPUT1", "Main MIC",
-			"RINPUT2", "Main MIC",
-			"Mic Jack", "MICB",
-			"Main MIC", "MICB",
-			"CPU-Playback", "ASRC-Playback",
-			"Playback", "CPU-Playback",
-			"ASRC-Capture", "CPU-Capture",
-			"CPU-Capture", "Capture";
 	};
 
 	leds {
@@ -174,13 +137,6 @@
 	status = "disabled";
 };
 
-&flexcan1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexcan1>;
-	/* xceiver-supply = <&reg_can_3v3>; */
-	status = "okay";
-};
-
 &gpc {
 	fsl,cpu_pupscr_sw2iso = <0x1>;
 	fsl,cpu_pupscr_sw = <0x0>;
@@ -189,25 +145,83 @@
 	fsl,ldo-bypass = <0>; /* DCDC, ldo-enable */
 };
 
+&i2c1 {
+	clock_frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c1>;
+	status = "okay";
+	/* maxim keyboard max7359 */
+	max7359_keypad@38 {
+		pinctrl-0 = <&pinctrl_max7359>;
+		compatible = "maxim,max7359";
+		reg = <0x38>;
+		interrupts = <1 IRQ_TYPE_LEVEL_LOW>;	/* gpio5[1] */
+		interrupt-parent = <&gpio5>;
+		maxim,debounce_reg = /bits/ 8 <0x1F>;
+		maxim,ports_reg = /bits/ 8 <0xFF>;
+		linux,keymap = <
+			MATRIX_KEY(0, 0, KEY_1) /* row 0 col 0 */
+			MATRIX_KEY(1, 0, KEY_2) /* row 1 col 0 */
+			MATRIX_KEY(2, 0, KEY_3)
+			MATRIX_KEY(3, 0, KEY_0)	/* s col 0~2 row 0~3*/
+						
+			MATRIX_KEY(0, 1, KEY_4)
+			MATRIX_KEY(1, 1, KEY_5)
+			MATRIX_KEY(2, 1, KEY_6)
+			MATRIX_KEY(3, 1, KEY_BACKSPACE)
+
+			MATRIX_KEY(0, 2, KEY_7)
+			MATRIX_KEY(1, 2, KEY_8)
+			MATRIX_KEY(2, 2, KEY_9)
+			MATRIX_KEY(3, 2, KEY_ENTER)
+
+			/* big key board row4..7 - col3..7 */
+			MATRIX_KEY(4, 3, KEY_KP1)
+			MATRIX_KEY(4, 4, KEY_KP2)
+			MATRIX_KEY(4, 5, KEY_KP3)
+			MATRIX_KEY(4, 6, KEY_A)
+			MATRIX_KEY(4, 7, KEY_NUMLOCK)
+
+			MATRIX_KEY(5, 3, KEY_KP4)
+			MATRIX_KEY(5, 4, KEY_KP5)
+			MATRIX_KEY(5, 5, KEY_KP6)
+			MATRIX_KEY(5, 6, KEY_B)
+			MATRIX_KEY(5, 7, KEY_KPPLUS)
+
+			MATRIX_KEY(6, 3, KEY_KP7)
+			MATRIX_KEY(6, 4, KEY_KP8)
+			MATRIX_KEY(6, 5, KEY_KP9)
+			MATRIX_KEY(6, 6, KEY_KPENTER)
+			MATRIX_KEY(6, 7, KEY_RESERVED)
+
+			MATRIX_KEY(7, 3, KEY_D)
+			MATRIX_KEY(7, 4, KEY_KP0)
+			MATRIX_KEY(7, 5, KEY_E)
+			MATRIX_KEY(7, 6, KEY_C)
+			MATRIX_KEY(7, 7, KEY_DELETE)
+
+		>;
+	};
+	/* camera */
+};
+
 &i2c2 {
 	clock_frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2>;
 	status = "okay";
-
-	codec: wm8960@1a {
-		compatible = "wlf,wm8960";
-		reg = <0x1a>;
-		clocks = <&clks IMX6UL_CLK_SAI2>;
-		clock-names = "mclk";
-		wlf,shared-lrclk;
-	};
+	/* connect to lcd */
 };
 
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog_1>;
 	imx6ul-evk {
+		pinctrl_max7359: ma7359grp {
+			fsl,pins = <
+				MX6UL_PAD_SNVS_TAMPER1__GPIO5_IO01	0x80000000
+			>;
+		};
 		pinctrl_hog_1: hoggrp-1 {
 			fsl,pins = <
 				MX6UL_PAD_UART1_RTS_B__GPIO1_IO19	0x17059 /* SD1 CD */
@@ -252,35 +266,17 @@
 			>;
 		};
 
-		pinctrl_flexcan1: flexcan1grp{
+		pinctrl_i2c1: i2c1grp {
 			fsl,pins = <
-				MX6UL_PAD_UART3_RTS_B__FLEXCAN1_RX	0x1b020
-				MX6UL_PAD_UART3_CTS_B__FLEXCAN1_TX	0x1b020
-			>;
-		};
-
-		pinctrl_flexcan2: flexcan2grp{
-			fsl,pins = <
-				MX6UL_PAD_UART2_RTS_B__FLEXCAN2_RX	0x1b020
-				MX6UL_PAD_UART2_CTS_B__FLEXCAN2_TX	0x1b020
+				MX6UL_PAD_UART4_TX_DATA__I2C1_SCL 0x4001b8b0
+				MX6UL_PAD_UART4_RX_DATA__I2C1_SDA 0x4001b8b0
 			>;
 		};
 
 		pinctrl_i2c2: i2c2grp {
 			fsl,pins = <
-				MX6UL_PAD_GPIO1_IO00__I2C2_SCL 0x4001b8b0
-				MX6UL_PAD_GPIO1_IO01__I2C2_SDA 0x4001b8b0
-			>;
-		};
-
-		pinctrl_sai2: sai2grp {
-			fsl,pins = <
-				MX6UL_PAD_JTAG_TDI__SAI2_TX_BCLK	0x17088
-				MX6UL_PAD_JTAG_TDO__SAI2_TX_SYNC	0x17088
-				MX6UL_PAD_JTAG_TRST_B__SAI2_TX_DATA	0x11088
-				MX6UL_PAD_JTAG_TCK__SAI2_RX_DATA	0x11088
-				MX6UL_PAD_JTAG_TMS__SAI2_MCLK		0x17088
-				MX6UL_PAD_SNVS_TAMPER4__GPIO5_IO04	0x17059
+				MX6UL_PAD_UART5_TX_DATA__I2C2_SCL 0x4001b8b0
+				MX6UL_PAD_UART5_RX_DATA__I2C2_SDA 0x4001b8b0
 			>;
 		};
 
@@ -305,20 +301,6 @@
 				MX6UL_PAD_NAND_READY_B__UART3_DCE_TX	0x1b0b1
 				MX6UL_PAD_NAND_CE0_B__UART3_DCE_RX		0x1b0b1
 				MX6UL_PAD_NAND_CE1_B__UART3_DCE_CTS 	0x1b0b1
-			>;
-		};
-
-		pinctrl_uart4: uart4grp {
-			fsl,pins = <
-				MX6UL_PAD_UART4_TX_DATA__UART4_DCE_TX	0x1b0b1
-				MX6UL_PAD_UART4_RX_DATA__UART4_DCE_RX	0x1b0b1
-			>;
-		};
-
-		pinctrl_uart5: uart5grp {
-			fsl,pins = <
-				MX6UL_PAD_UART5_TX_DATA__UART5_DCE_TX	0x1b0b1
-				MX6UL_PAD_UART5_RX_DATA__UART5_DCE_RX	0x1b0b1
 			>;
 		};
 
@@ -431,18 +413,6 @@
 	status = "okay";
 };
 
-&sai2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sai2>;
-
-	assigned-clocks = <&clks IMX6UL_CLK_SAI2_SEL>,
-			  <&clks IMX6UL_CLK_SAI2>;
-	assigned-clock-parents = <&clks IMX6UL_CLK_PLL4_AUDIO_DIV>;
-	assigned-clock-rates = <0>, <12288000>;
-
-	status = "okay";
-};
-
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1>;
@@ -452,13 +422,6 @@
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
-	fsl,uart-has-rtscts;
-	/* for DTE mode, add below change */
-	/* fsl,dte-mode; */
-	/* pinctrl-0 = <&pinctrl_uart2dte>; */
-	rs485-rts-active-high;
-	rs485-rts-delay = <0 0>;
-	linux,rs485-enabled-at-boot-time;
 	status = "okay";
 };
 
@@ -472,17 +435,6 @@
 	status = "okay";
 };
 
-&uart4 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart4>;
-	status = "okay";
-};
-
-&uart5 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart5>;
-	status = "okay";
-};
 
 &usbotg1 {
 	dr_mode = "host";
