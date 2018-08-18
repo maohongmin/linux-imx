@@ -22,13 +22,6 @@
 #include <linux/input/matrix_keypad.h>
 #include <linux/of.h>
 
-#ifdef dev_dbg
-#undef dev_dbg
-#endif
-
-#define dev_dbg(dev, format, arg...)		\
-	dev_printk(KERN_WARNING, dev, format, ##arg)
-
 #define MAX7359_MAX_KEY_ROWS	8
 #define MAX7359_MAX_KEY_COLS	8
 #define MAX7359_MAX_KEY_NUM	(MAX7359_MAX_KEY_ROWS * MAX7359_MAX_KEY_COLS)
@@ -236,6 +229,42 @@ static inline int max7359_parse_dt(struct device *dev,
 }
 #endif
 
+static ssize_t store_port_control(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	int ret;
+	u8 val;
+
+	ret = kstrtou8(buf, 16, &val);
+	if (ret)
+		return ret;
+	
+	max7359_write_reg(client, MAX7359_REG_PORTS, val);
+	
+	return count;
+}
+
+static ssize_t show_port_control(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+
+	u8 val = max7359_read_reg(client, MAX7359_REG_PORTS);
+
+	return snprintf(buf, PAGE_SIZE, "%02x\n", val);
+}
+
+static struct device_attribute port_control_attr = \
+	__ATTR(port_control, 0660, show_port_control, store_port_control);
+
+static int max7359_sysfs_init(struct i2c_client *client)
+{
+	device_create_file(&client->dev, &port_control_attr);
+	return 0;
+}
+
 static int max7359_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
@@ -333,6 +362,8 @@ static int max7359_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, keypad);
 	device_init_wakeup(&client->dev, 1);
 
+	/* sysfs init */
+	max7359_sysfs_init(client);
 	return 0;
 }
 
