@@ -40,7 +40,7 @@ late_initcall(fb_logo_late_init);
  * modpost that it is intended that this function uses data
  * marked __initdata.
  */
-const struct linux_logo * __init_refok fb_find_logo(int depth)
+const struct linux_logo * __init_refok fb_find_logo(int depth, int i)
 {
 	const struct linux_logo *logo = NULL;
 
@@ -111,6 +111,16 @@ const struct linux_logo * __init_refok fb_find_logo(int depth)
 		/* M32R Linux logo */
 		logo = &logo_m32r_clut224;
 #endif
+		/* IMX Linux logo */
+		if (i == 0) {
+#ifdef CONFIG_LOGO_IMX_CLUT224
+			logo = &logo_imx_clut224;
+#endif
+		} else {
+#ifdef CONFIG_LOGO_IMX1_CLUT224
+			logo = &logo_imx1_clut224;
+#endif
+		}
 	}
 	return logo;
 }

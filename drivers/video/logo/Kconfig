@@ -82,4 +82,14 @@ config LOGO_M32R_CLUT224
 	depends on M32R
 	default y
 
+config LOGO_IMX_CLUT224
+	bool "224-color IMX Linux logo"
+	depends on ARCH_MXC
+	default y
+
+config LOGO_IMX1_CLUT224
+	bool "224-color-1 IMX Linux logo"
+	depends on ARCH_MXC
+	default y
+
 endif # LOGO

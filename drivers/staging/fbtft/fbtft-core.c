@@ -1467,6 +1467,13 @@ int fbtft_probe_common(struct fbtft_display *display,
 	/* use platform_data provided functions above all */
 	fbtft_merge_fbtftops(&par->fbtftops, &pdata->display.fbtftops);
 
+#if defined(CONFIG_LOGO)
+	if (fb_prepare_logo(info, FB_ROTATE_UR | 0x80)) {
+		/* Start display and show logo on boot */
+		fb_set_cmap(&info->cmap, info);
+		fb_show_logo(info, FB_ROTATE_UR);
+	}
+#endif
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;

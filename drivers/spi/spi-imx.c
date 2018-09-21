@@ -116,6 +116,9 @@ struct spi_imx_data {
 	int idle_state_provided;
 	int idle_state;
 	int current_state;
+
+	/* POLL */
+	bool usepoll;
 };
 
 static inline int is_imx27_cspi(struct spi_imx_data *d)
@@ -266,12 +269,23 @@ static bool spi_imx_can_dma(struct spi_master *master, struct spi_device *spi,
 #define MX51_ECSPI_DMA_RXTDEN		(1 << 31)
 
 #define MX51_ECSPI_STAT		0x18
-#define MX51_ECSPI_STAT_RR		(1 <<  3)
+#define MX51_ECSPI_STAT_RR		(1 << 3)
+#define MX51_ECSPI_STAT_TF		(1 << 2)
+#define MX51_ECSPI_STAT_TDR		(1 << 1)
+#define MX51_ECSPI_STAT_TE		(1 << 0)
+#define MX51_ECSPI_STAT_TC		(1 << 7)
+#define MX51_ECSPI_STAT_RO		(1 << 6)
 
 #define MX51_ECSPI_PERIOD		0x1c
 
 #define MX51_ECSPI_TESTREG	0x20
 #define MX51_ECSPI_TESTREG_LBC	BIT(31)
+
+static inline int spi_imx6ul_get_status(struct spi_imx_data *spi_imx, unsigned int stat)
+{
+	unsigned int val = readl(spi_imx->base + MX51_ECSPI_STAT);
+	return val & stat;
+}
 
 /* MX51 eCSPI */
 static unsigned int mx51_ecspi_clkdiv(struct spi_imx_data *spi_imx,
@@ -342,6 +356,20 @@ static void mx51_ecspi_trigger(struct spi_imx_data *spi_imx)
 		reg |= MX51_ECSPI_CTRL_SMC;
 	else
 		reg &= ~MX51_ECSPI_CTRL_SMC;
+	writel(reg, spi_imx->base + MX51_ECSPI_CTRL);
+}
+
+static void mx6ul_ecspi_start(struct spi_imx_data *spi_imx)
+{
+	u32 reg = readl(spi_imx->base + MX51_ECSPI_CTRL);
+	reg |= MX51_ECSPI_CTRL_SMC;
+	writel(reg, spi_imx->base + MX51_ECSPI_CTRL);
+}
+
+static void mx6ul_ecspi_stop(struct spi_imx_data *spi_imx)
+{
+	u32 reg = readl(spi_imx->base + MX51_ECSPI_CTRL);
+	reg &= ~MX51_ECSPI_CTRL_SMC;
 	writel(reg, spi_imx->base + MX51_ECSPI_CTRL);
 }
 
@@ -443,6 +471,13 @@ static int mx51_ecspi_config(struct spi_device *spi)
 	else			/* SCLK is _very_ slow */
 		usleep_range(delay, delay + 10);
 
+	if (spi_imx->usepoll) {
+		unsigned int half_fifosize = spi_imx_get_fifosize(spi_imx) >> 1;
+		writel(MX51_ECSPI_DMA_RX_WML(half_fifosize) |
+			MX51_ECSPI_DMA_TX_WML(half_fifosize),
+			spi_imx->base + MX51_ECSPI_DMA);
+		return 0;
+	}
 	/*
 	 * Configure the DMA register: setup the watermark
 	 * and enable DMA request.
@@ -1266,11 +1301,55 @@ static int spi_imx_pio_transfer(struct spi_device *spi,
 	return transfer->len;
 }
 
+static int spi_imx_poll_transfer(struct spi_device *spi,
+				struct spi_transfer *transfer)
+{
+	struct spi_imx_data *spi_imx = spi_master_get_devdata(spi->master);
+
+	spi_imx->tx_buf = transfer->tx_buf;
+	spi_imx->rx_buf = transfer->rx_buf;
+	spi_imx->count = transfer->len;
+	spi_imx->txfifo = 0;
+
+	mx6ul_ecspi_start(spi_imx);
+	while (spi_imx->count) {
+ 		/* wait TDR */
+		while (spi_imx6ul_get_status(spi_imx, MX51_ECSPI_STAT_TDR) == 0) {
+			/* read data */
+			if (spi_imx6ul_get_status(spi_imx, MX51_ECSPI_STAT_RR)) {
+				spi_imx->rx(spi_imx);
+			}
+		}
+		/* push data */
+		while (spi_imx6ul_get_status(spi_imx, MX51_ECSPI_STAT_TF) == 0) {
+			if (!spi_imx->count)
+				break;
+			spi_imx->tx(spi_imx);
+		}
+	}
+	/* wait transfer done */
+	while (spi_imx6ul_get_status(spi_imx, MX51_ECSPI_STAT_TC) == 0) {
+	}
+	writel(MX51_ECSPI_STAT_TC | MX51_ECSPI_STAT_RO, spi_imx->base + MX51_ECSPI_STAT);
+	if (spi_imx->rx_buf) {
+		while (spi_imx->devtype_data->rx_available(spi_imx)) {
+			spi_imx->rx(spi_imx);
+		}
+	}
+	mx6ul_ecspi_stop(spi_imx);
+	return transfer->len;
+}
+
+
 static int spi_imx_transfer(struct spi_device *spi,
 				struct spi_transfer *transfer)
 {
 	struct spi_imx_data *spi_imx = spi_master_get_devdata(spi->master);
 
+	if (spi_imx->usepoll) {
+		return spi_imx_poll_transfer(spi, transfer);
+	}
+	
 	if (spi_imx->usedma)
 		return spi_imx_dma_transfer(spi_imx, transfer);
 	else
@@ -1375,6 +1454,9 @@ static int spi_imx_probe(struct platform_device *pdev)
 	num_cs = of_gpio_named_count(np, "cs-gpios");
 	spi_imx->speed_hz = speed_hz;
 
+	/* get use poll flag */
+	spi_imx->usepoll = of_property_read_bool(np, "usepoll");
+
 	ret = of_property_read_u32(np, "idle-state", &idle_state);
 	if (ret >= 0) {
 		spi_imx->idle_state = idle_state;
@@ -1462,8 +1544,8 @@ static int spi_imx_probe(struct platform_device *pdev)
 	 * Only validated on i.mx35 and i.mx6 now, can remove the constraint
 	 * if validated on other chips.
 	 */
-	if (is_imx35_cspi(spi_imx) || is_imx51_ecspi(spi_imx) ||
-			is_imx6ul_ecspi(spi_imx)) {
+	if ((spi_imx->usepoll == false) && (is_imx35_cspi(spi_imx) || is_imx51_ecspi(spi_imx) ||
+			is_imx6ul_ecspi(spi_imx))) {
 		ret = spi_imx_sdma_init(&pdev->dev, spi_imx, master, res);
 		if (ret == -EPROBE_DEFER)
 			goto out_clk_put;

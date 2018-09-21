@@ -38,9 +38,9 @@
 
 	backlight {
 		compatible = "pwm-backlight";
-		pwms = <&pwm1 0 5000000>;
-		brightness-levels = <0 4 8 16 32 64 128 255>;
-		default-brightness-level = <6>;
+		pwms = <&pwm1 0 1666666>;
+		brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
+		default-brightness-level = <8>;
 		status = "okay";
 	};
 
@@ -208,7 +208,7 @@
 		reg = <0x38>;
 		interrupts = <1 IRQ_TYPE_LEVEL_LOW>;	/* gpio5[1] */
 		interrupt-parent = <&gpio5>;
-		maxim,debounce_reg = /bits/ 8 <0xBF>;
+		maxim,debounce_reg = /bits/ 8 <0xB8>;
 		maxim,ports_reg = /bits/ 8 <0x3F>;
 		linux,keymap = <
 			MATRIX_KEY(0, 0, KEY_1) /* row 0 col 0 */
@@ -274,6 +274,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi4>;
 	status = "okay";
+	/* usepoll; */
 
 	spi-display@0 {
 		compatible = "ilitek,ili9481";
@@ -288,14 +289,30 @@
 		/* reset-gpios = <&gpio 23 0>; */
 		/* dc-gpios = <&gpio 24 0>; */
 		/* led-gpios = <&gpio 18 1>; */
-		debug = <1>;
+		debug = <0>;
+		txbuflen = <0x10000>;
 	};
+};
+
+&sim1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sim1>;
+	clocks = <&clks IMX6UL_CLK_SIM1>;
+	clock-names = "sim";
+	status = "okay";
 };
 
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog_1>;
 	imx6ul-evk {
+		pinctrl_sim1: sim1grp {
+			fsl,pins = <
+				MX6UL_PAD_ENET2_RX_EN__SIM1_PORT0_RST_B		0x170b0
+				MX6UL_PAD_ENET2_RX_DATA0__SIM1_PORT0_TRXD	0x178b0
+				MX6UL_PAD_ENET2_RX_DATA1__SIM1_PORT0_CLK	0x170b0
+			>;
+		};
 		pinctrl_max7359: ma7359grp {
 			fsl,pins = <
 				MX6UL_PAD_SNVS_TAMPER1__GPIO5_IO01	0x80000000
@@ -359,9 +376,9 @@
 		pinctrl_ecspi4: ecspi4grp {
 			fsl,pins = <
 				/* MX6UL_PAD_ENET2_TX_CLK__ECSPI4_MISO		0x100b1 */
-				MX6UL_PAD_ENET2_TX_EN__ECSPI4_MOSI		0x100b1
-				MX6UL_PAD_ENET2_TX_DATA1__ECSPI4_SCLK	0x100b1
-				MX6UL_PAD_ENET2_RX_ER__ECSPI4_SS0		0x10b0
+				MX6UL_PAD_ENET2_TX_EN__ECSPI4_MOSI		0x1b0b1
+				MX6UL_PAD_ENET2_TX_DATA1__ECSPI4_SCLK	0x1b0b1
+				MX6UL_PAD_ENET2_RX_ER__ECSPI4_SS0		0x1b0b1
 			>;
 		};
 		pinctrl_i2c1: i2c1grp {

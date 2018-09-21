@@ -68,6 +68,7 @@ struct max7359_keypad {
 struct max7359_initial_state {
 	u8 debounce_val;
 	u8 ports_val;
+	bool repeat;
 };
 
 static int max7359_write_reg(struct i2c_client *client, u8 reg, u8 val)
@@ -219,6 +220,8 @@ static int max7359_parse_dt(struct device *dev,
 	if (!of_property_read_u8(np, "maxim,ports_reg", &prop))
 		init_state->ports_val = prop;
 
+	init_state->repeat = !of_property_read_bool(np, "no-repeat");
+
 	return 0;
 }
 #else
@@ -324,7 +327,10 @@ static int max7359_probe(struct i2c_client *client,
 	input_dev->close = max7359_close;
 	input_dev->dev.parent = &client->dev;
 
-	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REP);
+	input_dev->evbit[0] = BIT_MASK(EV_KEY);
+	if (init_state.repeat) {
+		input_dev->evbit[0] |= BIT_MASK(EV_REP);
+	}
 	input_dev->keycodesize = sizeof(keypad->keycodes[0]);
 	input_dev->keycodemax = ARRAY_SIZE(keypad->keycodes);
 	input_dev->keycode = keypad->keycodes;

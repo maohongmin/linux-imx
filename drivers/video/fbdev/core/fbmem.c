@@ -596,6 +596,7 @@ int fb_prepare_logo(struct fb_info *info, int rotate)
 {
 	int depth = fb_get_color_depth(&info->var, &info->fix);
 	unsigned int yres;
+	int logoi = rotate >> 7;	/* rotate bit7 => logo index */
 
 	memset(&fb_logo, 0, sizeof(struct logo_data));
 
@@ -617,12 +618,13 @@ int fb_prepare_logo(struct fb_info *info, int rotate)
 	}
 
 	/* Return if no suitable logo was found */
-	fb_logo.logo = fb_find_logo(depth);
+	fb_logo.logo = fb_find_logo(depth, logoi);
 
 	if (!fb_logo.logo) {
 		return 0;
 	}
 
+	rotate &= 0x3;
 	if (rotate == FB_ROTATE_UR || rotate == FB_ROTATE_UD)
 		yres = info->var.yres;
 	else
